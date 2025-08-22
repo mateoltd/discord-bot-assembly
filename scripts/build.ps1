@@ -78,7 +78,7 @@ foreach ($f in $asmFiles) {
 Write-Host "[link] $link"
 $libArgs = @()
 if ($winsdkLib) { $libArgs += "/LIBPATH:$winsdkLib" }
-& $link /nologo /DEBUG /SUBSYSTEM:CONSOLE /ENTRY:main $objs kernel32.lib ws2_32.lib /OUT:$exe @libArgs
+& $link /nologo /DEBUG /SUBSYSTEM:CONSOLE /ENTRY:main $objs kernel32.lib ws2_32.lib bcrypt.lib secur32.lib crypt32.lib /OUT:$exe @libArgs
 if ($LASTEXITCODE -ne 0) { throw "link failed" }
 
 Write-Host "Build succeeded: $exe"

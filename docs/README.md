@@ -20,7 +20,21 @@ If the script cannot find the tools, install VS Build Tools and Windows SDK, or 
 ```
 .\build\bot.exe
 ```
-It should print a bootstrap message. Next steps will wire up Winsock + SChannel, HTTP, WebSocket, and Discord Gateway.
+It prints a bootstrap message, verifies Winsock, attempts to load `DISCORD_BOT_TOKEN` from the environment, and performs a simple TCP connect to `discord.com:443`.
+
+You can provide the bot token in any of these ways (checked in this order):
+
+- `DISCORD_BOT_TOKEN` environment variable.
+- `DISCORD_TOKEN_FILE` environment variable pointing to a file path.
+- `config/token.txt` (this repo ignores the entire `config/` dir by default).
+
+Set your token in the current shell before running:
+
+```powershell
+$env:DISCORD_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+```
+
+Or write it once to `config/token.txt`
 
 ## Roadmap (MVP)
 See the root TODOs managed in our session: Winsock layer, TLS via SChannel, HTTP/1.1, WebSocket, Discord Gateway (HELLO/IDENTIFY/heartbeat), simple ping→pong responder.
