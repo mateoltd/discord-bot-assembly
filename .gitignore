@@ -1,0 +1,10 @@
+# Build outputs
+/build/
+/*.pdb
+/*.obj
+**/*.obj
+**/*.pdb
+**/*.ilk
+**/*.exe
+/.vs/
+/.vscode/
