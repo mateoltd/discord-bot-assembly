@@ -7,15 +7,21 @@ PUBLIC str_len
 PUBLIC str_cmp
 PUBLIC str_ncmp
 PUBLIC str_eq
+EXTERN log_cstrln:PROC
 
 .code
 ; size_t str_len(const char* s)
 ; RCX = s, returns RAX = length (not including NUL)
 str_len PROC
     sub     rsp, 28h
-    mov     rax, rcx        ; rax = cur
+    ; Save input pointer for logging and restore after
+    mov     [rsp+20h], rcx
+    lea     rcx, sl_msg_enter
+    call    log_cstrln
+    mov     rcx, [rsp+20h]
     test    rcx, rcx
-    jz      sl_done
+    jz      sl_null
+    mov     rax, rcx        ; rax = cur
 sl_loop:
     cmp     byte ptr [rax], 0
     je      sl_done
@@ -23,6 +29,14 @@ sl_loop:
     jmp     sl_loop
 sl_done:
     sub     rax, rcx        ; rax = cur - start
+    mov     [rsp+18h], rax  ; preserve length across log call
+    lea     rcx, sl_msg_done
+    call    log_cstrln
+    mov     rax, [rsp+18h]  ; restore computed length as return value
+    add     rsp, 28h
+    ret
+sl_null:
+    xor     rax, rax        ; return 0 for NULL string
     add     rsp, 28h
     ret
 str_len ENDP
@@ -100,4 +114,10 @@ se_no:
     ret
 str_eq ENDP
 
+; debug strings
+.data
+sl_msg_enter db "sl: enter",0
+sl_msg_done  db "sl: done",0
+
+.code
 END

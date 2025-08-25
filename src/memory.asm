@@ -45,8 +45,8 @@ mem_cpy PROC
     test    r11, r11
     jz      mc_done
 mc_loop:
-    mov     al, byte ptr [r10]
-    mov     byte ptr [r9], al
+    mov     dl, byte ptr [r10]
+    mov     byte ptr [r9], dl
     inc     r10
     inc     r9
     dec     r11

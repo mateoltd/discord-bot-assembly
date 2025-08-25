@@ -134,10 +134,11 @@ cfh_size_ok:
     test    rax, rax
     jz      cfh_oom_close
     mov     r9, rax                   ; buf
+    mov     [rsp+38h], r9             ; save buf local
 
     ; ReadFile(h, buf, (DWORD)size, &read, NULL)
     mov     rcx, r10
-    mov     rdx, r9
+    mov     rdx, [rsp+38h]
     mov     r8d, r11d
     lea     r9, [rsp+30h]             ; DWORD read
     mov     qword ptr [rsp+20h], 0    ; lpOverlapped (reuse local area)
@@ -146,26 +147,29 @@ cfh_size_ok:
     jz      cfh_fail_read
     ; NUL-terminate and trim CR/LF
     mov     eax, dword ptr [rsp+30h]  ; read
+    mov     r9, [rsp+38h]             ; restore buf
     mov     byte ptr [r9+rax], 0
     test    eax, eax
     jz      cfh_done_ok
     ; trim loop
 cfh_trim:
+    test    eax, eax              ; check if length is 0
+    jz      cfh_done_ok
     mov     edx, eax
     dec     edx
-    mov     bl, byte ptr [r9+rdx]
-    cmp     bl, 13
+    mov     r8b, byte ptr [r9+rdx]  ; don't clobber AL (length)
+    cmp     r8b, 13
     je      cfh_trim_cr
-    cmp     bl, 10
+    cmp     r8b, 10
     je      cfh_trim_lf
     jmp     cfh_done_ok
 cfh_trim_cr:
     mov     byte ptr [r9+rdx], 0
-    mov     eax, edx
+    mov     eax, edx              ; update length
     jmp     cfh_trim
 cfh_trim_lf:
     mov     byte ptr [r9+rdx], 0
-    mov     eax, edx
+    mov     eax, edx              ; update length
     jmp     cfh_trim
 
 cfh_done_ok:
@@ -180,7 +184,7 @@ cfh_done_ok:
 
 cfh_fail_read:
     ; free buf, close, return last error
-    mov     rcx, r9
+    mov     rcx, [rsp+38h]
     call    heap_free
     mov     rcx, r10
     call    CloseHandle
@@ -207,30 +211,30 @@ config_file_get_heap ENDP
 ; RCX = &outStr
 ; Tries env var DISCORD_BOT_TOKEN, then config\\token.txt (cwd-relative)
 config_load_token_heap PROC
-    sub     rsp, 28h
-    ; Save &outStr
-    mov     [rsp+20h], rcx
+    sub     rsp, 48h
+    ; Save &outStr in high local (outside home space)
+    mov     [rsp+40h], rcx
 
     ; Try environment variable first
     lea     rcx, token_env_name
-    lea     rdx, [rsp+18h]            ; temp storage for pointer
+    lea     rdx, [rsp+38h]            ; temp storage for pointer
     call    config_env_get_heap
     test    eax, eax
     jz      clt_success
 
     ; Optional override path via DISCORD_TOKEN_FILE
     lea     rcx, token_file_env_name
-    lea     rdx, [rsp+10h]            ; temp path pointer
+    lea     rdx, [rsp+30h]            ; temp path pointer
     call    config_env_get_heap
     test    eax, eax
     jnz     clt_default_file
     ; Have path -> read file
-    mov     rcx, [rsp+10h]
-    lea     rdx, [rsp+18h]
+    mov     rcx, [rsp+30h]
+    lea     rdx, [rsp+38h]
     call    config_file_get_heap
     mov     r11d, eax
     ; free path buffer
-    mov     rcx, [rsp+10h]
+    mov     rcx, [rsp+30h]
     call    heap_free
     test    r11d, r11d
     jz      clt_success
@@ -239,23 +243,23 @@ config_load_token_heap PROC
 clt_default_file:
     ; Fallback to config\token.txt
     lea     rcx, token_default_path
-    lea     rdx, [rsp+18h]
+    lea     rdx, [rsp+38h]
     call    config_file_get_heap
     test    eax, eax
     jnz     clt_fail                  ; propagate last error
 
 clt_success:
     ; *outStr = temp
-    mov     r10, [rsp+20h]            ; &outStr
-    mov     rax, [rsp+18h]            ; temp ptr
+    mov     r10, [rsp+40h]            ; &outStr
+    mov     rax, [rsp+38h]            ; temp ptr
     mov     [r10], rax
     xor     eax, eax
-    add     rsp, 28h
+    add     rsp, 48h
     ret
 
 clt_fail:
     ; return error in EAX from last call
-    add     rsp, 28h
+    add     rsp, 48h
     ret
 config_load_token_heap ENDP
 
